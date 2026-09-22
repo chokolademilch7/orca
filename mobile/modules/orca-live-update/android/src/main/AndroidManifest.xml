@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Android 16 QPR2+ gates status-bar Live Updates behind this permission; the string is
+       spelled out because compileSdk 36 predates the constant. Older OS versions ignore it. -->
+  <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+</manifest>
