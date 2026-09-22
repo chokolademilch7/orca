@@ -11,8 +11,8 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 /**
- * Posts one ongoing "agent lamps" notification: up to five segments, lit while the agent is
- * working and dark once it is done. On Android 16 QPR2+ it is promoted to a status-bar Live
+ * Posts one ongoing "agent lamps" notification: up to five segments, yellow while the agent is
+ * working, red when it is blocked or waiting, green once it is done. On Android 16 QPR2+ it is promoted to a status-bar Live
  * Update chip showing the same lamps as text; older releases just show the notification.
  */
 class OrcaLiveUpdateModule : Module() {
@@ -29,9 +29,9 @@ class OrcaLiveUpdateModule : Module() {
 
     // Why swallow: a lamp is a glance aid; a notification-side failure (missing context during
     // teardown, an OEM NotificationManager quirk) must never take the app down with it.
-    Function("update") { lamps: List<Boolean>, title: String, body: String ->
+    Function("update") { lamps: List<String>, title: String, body: String, chipText: String ->
       if (Build.VERSION.SDK_INT >= SUPPORTED_SDK) {
-        runCatching { post(lamps.take(MAX_LAMPS), title, body) }
+        runCatching { post(lamps.take(MAX_LAMPS), title, body, chipText) }
           .onFailure { Log.w(TAG, "agent lamps update failed", it) }
       }
     }
@@ -42,7 +42,7 @@ class OrcaLiveUpdateModule : Module() {
     }
   }
 
-  private fun post(lamps: List<Boolean>, title: String, body: String) {
+  private fun post(lamps: List<String>, title: String, body: String, chipText: String) {
     if (lamps.isEmpty()) {
       manager.cancel(NOTIFICATION_ID)
       return
@@ -51,8 +51,8 @@ class OrcaLiveUpdateModule : Module() {
     val style = Notification.ProgressStyle()
       .setStyledByProgress(false)
       .setProgressSegments(
-        lamps.map { lit ->
-          Notification.ProgressStyle.Segment(1).setColor(if (lit) COLOR_LIT else COLOR_OFF)
+        lamps.map { lamp ->
+          Notification.ProgressStyle.Segment(1).setColor(color(lamp))
         }
       )
     val builder = Notification.Builder(context, CHANNEL_ID)
@@ -62,9 +62,15 @@ class OrcaLiveUpdateModule : Module() {
       .setOngoing(true)
       .setOnlyAlertOnce(true)
       .setStyle(style)
-      .setShortCriticalText(lamps.joinToString("") { if (it) "●" else "○" })
+      .setShortCriticalText(chipText)
     requestPromotedOngoing(builder)
     manager.notify(NOTIFICATION_ID, builder.build())
+  }
+
+  private fun color(lamp: String): Int = when (lamp) {
+    "done" -> COLOR_DONE
+    "attention" -> COLOR_ATTENTION
+    else -> COLOR_WORKING
   }
 
   private fun ensureChannel() {
@@ -101,7 +107,9 @@ class OrcaLiveUpdateModule : Module() {
     const val MAX_LAMPS = 5
     const val CHANNEL_ID = "orca-agent-lamps"
     const val NOTIFICATION_ID = 0x0ACA
-    val COLOR_LIT = Color.rgb(0x22, 0xC5, 0x5E)
-    val COLOR_OFF = Color.rgb(0x52, 0x52, 0x5B)
+    // Same palette as mobile/src/components/AgentStateDot.tsx.
+    val COLOR_WORKING = Color.rgb(0xEA, 0xB3, 0x08)
+    val COLOR_ATTENTION = Color.rgb(0xEF, 0x44, 0x44)
+    val COLOR_DONE = Color.rgb(0x10, 0xB9, 0x81)
   }
 }

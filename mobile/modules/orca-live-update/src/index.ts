@@ -1,10 +1,12 @@
 import { requireOptionalNativeModule } from 'expo-modules-core'
+import type { AgentLamp } from '../../../src/notifications/agent-lamps'
 
 export type OrcaLiveUpdateModule = {
   /** True on Android 16+ where the ProgressStyle notification exists. */
   isSupported(): boolean
-  /** Post or replace the lamps notification. `lamps[i]` lit = that agent is still working. */
-  update(lamps: boolean[], title: string, body: string): void
+  /** Post or replace the lamps notification, one segment per agent state; `chipText` is the
+   *  monochrome status-bar chip label. */
+  update(lamps: AgentLamp[], title: string, body: string, chipText: string): void
   clear(): void
 }
 

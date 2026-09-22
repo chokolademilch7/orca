@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RuntimeWorktreeAgentRow } from '../../../src/shared/runtime-types'
 import { AGENT_STATUS_STALE_AFTER_MS } from '../worktree/agent-row-display'
-import { AGENT_LAMP_MAX, agentLampSummary, agentLamps } from './agent-lamps'
+import { AGENT_LAMP_MAX, agentLampChipText, agentLampSummary, agentLamps } from './agent-lamps'
 
 function row(overrides: Partial<RuntimeWorktreeAgentRow> = {}): RuntimeWorktreeAgentRow {
   return {
@@ -23,7 +23,7 @@ function row(overrides: Partial<RuntimeWorktreeAgentRow> = {}): RuntimeWorktreeA
 }
 
 describe('agentLamps', () => {
-  it('lights working agents and darkens done ones, newest first', () => {
+  it('maps done, working and waiting agents to lamp states, newest first', () => {
     const lamps = agentLamps(
       [
         { agents: [row({ state: 'done', updatedAt: 3 }), row({ state: 'working', updatedAt: 1 })] },
@@ -31,7 +31,7 @@ describe('agentLamps', () => {
       ],
       1_000
     )
-    expect(lamps).toEqual([false, true, true])
+    expect(lamps).toEqual(['done', 'attention', 'working'])
   })
 
   it('drops idle, interrupted and stale rows and caps at five', () => {
@@ -51,11 +51,17 @@ describe('agentLamps', () => {
       now
     )
     expect(lamps).toHaveLength(AGENT_LAMP_MAX)
-    expect(lamps.every(Boolean)).toBe(true)
+    expect(lamps.every((lamp) => lamp === 'working')).toBe(true)
   })
 
   it('summarises counts', () => {
-    expect(agentLampSummary([true, false, true])).toBe('2 working · 1 done')
+    expect(agentLampSummary(['working', 'done', 'working'])).toBe('2 working · 1 done')
+    expect(agentLampSummary(['attention', 'done'])).toBe('0 working · 1 waiting · 1 done')
     expect(agentLamps([], 0)).toEqual([])
+  })
+
+  it('renders chip counts, attention first, zero counts dropped', () => {
+    expect(agentLampChipText(['working', 'done', 'attention', 'working'])).toBe('1! 2● 1✓')
+    expect(agentLampChipText(['done', 'done'])).toBe('2✓')
   })
 })
