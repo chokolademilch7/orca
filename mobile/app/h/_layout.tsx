@@ -12,6 +12,7 @@ import {
 } from '../../src/storage/preferences'
 import { HostProtocolGate } from '../../src/components/HostProtocolGate'
 import { HostScreen } from '../../src/host-screen/HostScreen'
+import { useAgentLampsFeed } from '../../src/notifications/use-agent-lamps-feed'
 
 // Keep at least this much room for the detail pane when resizing the sidebar.
 const MIN_DETAIL_WIDTH = 320
@@ -103,6 +104,9 @@ export default function HostGroupLayout() {
   const showSidebar = isWideLayout && !!hostId
   const detailHasContent = !!hostId && pathname !== `/h/${hostId}`
   const canCollapseSidebar = showSidebar && detailHasContent
+  // Why here: this layout is never a frozen stack screen. The host list feeds the lamps while it
+  // is focused or embedded; poll only when a detail route has it blurred or unmounted.
+  useAgentLampsFeed(hostId, detailHasContent && !(showSidebar && sidebarOpen))
 
   // Why: there is no reveal button — navigating Back to the base host route brings
   // the sidebar back (and that route's detail pane is only a placeholder, so a

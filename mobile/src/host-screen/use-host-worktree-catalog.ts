@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { setCachedWorktrees } from '../cache/worktree-cache'
+import { publishAgentLampsWorktrees } from '../notifications/agent-lamps-source'
 import type { RpcClient } from '../transport/rpc-client'
 import type { ConnectionState } from '../transport/types'
 import { RpcIncompatibleReplyError } from '../transport/rpc-incompatible-reply-error'
@@ -96,6 +97,9 @@ export function useHostWorktreeCatalog(args: {
           setLastKnownWorktrees((current) =>
             areWorktreeListsEqual(current, confirmed) ? current : confirmed
           )
+          if (hostId) {
+            publishAgentLampsWorktrees(hostId, confirmed)
+          }
           setWorktreesLoaded(true)
           // Why (#8498): overwrite the home-written cache with the confirmed snapshot so a reconnect/remount can't serve a stale list.
           if (hostId) {

@@ -7,7 +7,6 @@ import { visibleHostRouteNotice } from '../host-route-notice'
 import { resolveHostRouteActionState } from '../host-route-action-state'
 import { useActiveWorktreeScroll } from '../hooks/use-active-worktree-scroll'
 import { useNow } from '../hooks/use-now'
-import { useAgentLampsLiveUpdate } from '../notifications/use-agent-lamps-live-update'
 import { useResponsiveLayout } from '../layout/responsive-layout'
 import { useForgetHostClient, useForceReconnect, useHostClient } from '../transport/client-context'
 import {
@@ -119,7 +118,6 @@ export function useHostScreenController({
     state.hostLabelById,
     state.hostPlatform
   ])
-  useAgentLampsLiveUpdate(displayWorktrees, now)
   const sectionsResult = useWorkspaceSections({
     displayWorktrees,
     sortMode: state.sortMode,
