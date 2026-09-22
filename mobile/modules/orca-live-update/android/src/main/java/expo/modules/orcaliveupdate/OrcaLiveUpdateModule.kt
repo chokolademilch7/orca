@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.graphics.Color
 import android.os.Build
+import android.util.Log
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -26,13 +27,19 @@ class OrcaLiveUpdateModule : Module() {
 
     Function("isSupported") { Build.VERSION.SDK_INT >= SUPPORTED_SDK }
 
+    // Why swallow: a lamp is a glance aid; a notification-side failure (missing context during
+    // teardown, an OEM NotificationManager quirk) must never take the app down with it.
     Function("update") { lamps: List<Boolean>, title: String, body: String ->
       if (Build.VERSION.SDK_INT >= SUPPORTED_SDK) {
-        post(lamps.take(MAX_LAMPS), title, body)
+        runCatching { post(lamps.take(MAX_LAMPS), title, body) }
+          .onFailure { Log.w(TAG, "agent lamps update failed", it) }
       }
     }
 
-    Function("clear") { manager.cancel(NOTIFICATION_ID) }
+    Function("clear") {
+      runCatching { manager.cancel(NOTIFICATION_ID) }
+        .onFailure { Log.w(TAG, "agent lamps clear failed", it) }
+    }
   }
 
   private fun post(lamps: List<Boolean>, title: String, body: String) {
@@ -89,6 +96,7 @@ class OrcaLiveUpdateModule : Module() {
   }
 
   private companion object {
+    const val TAG = "OrcaLiveUpdate"
     const val SUPPORTED_SDK = 36
     const val MAX_LAMPS = 5
     const val CHANNEL_ID = "orca-agent-lamps"
