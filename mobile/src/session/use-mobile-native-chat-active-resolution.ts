@@ -1,6 +1,11 @@
-import { useLayoutEffect, useRef, type MutableRefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react'
 import { encodeNativeChatTranscriptIdentity } from '../../../src/shared/native-chat-transcript-retention'
-import { resolveMobileNativeChat, type MobileNativeChatTab } from './mobile-native-chat-eligibility'
+import {
+  nativeChatDropDetails,
+  resolveMobileNativeChat,
+  type MobileNativeChatTab
+} from './mobile-native-chat-eligibility'
+import { logMobileTerminalDiagnostic } from './mobile-terminal-diagnostics'
 import { useMobileSessionViewMode } from './use-mobile-session-view-mode'
 
 export function useMobileNativeChatActiveResolution(args: {
@@ -34,7 +39,10 @@ export function useMobileNativeChatActiveResolution(args: {
     nativeChatTranscriptIsLocalReadable,
     worktreeId
   } = args
-  const { isTabChatView, toggleTabChatView } = useMobileSessionViewMode({ hostId, worktreeId })
+  const { isTabChatView, toggleTabChatView, viewFallback } = useMobileSessionViewMode({
+    hostId,
+    worktreeId
+  })
   const tabWantsChat =
     activeSessionTab?.type === 'agent-session' ||
     (activeSessionTabId ? isTabChatView(activeSessionTabId) : false)
@@ -51,6 +59,32 @@ export function useMobileNativeChatActiveResolution(args: {
     showNativeChatRef.current = showNativeChat
     activeChatAgentRef.current = activeChatAgent
   }, [activeChatAgent, showNativeChat])
+
+  // Why `always`: the flip is rare and reported from release builds, where a dev-only log is mute.
+  const shownNativeChatRef = useRef(showNativeChat)
+  useEffect(() => {
+    if (shownNativeChatRef.current && !showNativeChat) {
+      logMobileTerminalDiagnostic(
+        'native-chat-dropped',
+        nativeChatDropDetails({
+          tab: activeSessionTab,
+          tabId: activeSessionTabId,
+          tabWantsChat,
+          transcriptReadable: nativeChatTranscriptIsLocalReadable,
+          viewFallback
+        }),
+        { always: true }
+      )
+    }
+    shownNativeChatRef.current = showNativeChat
+  }, [
+    activeSessionTab,
+    activeSessionTabId,
+    nativeChatTranscriptIsLocalReadable,
+    showNativeChat,
+    tabWantsChat,
+    viewFallback
+  ])
 
   const activeChatSessionId = activeChatResolution?.sessionId ?? null
   const activeChatStructured =

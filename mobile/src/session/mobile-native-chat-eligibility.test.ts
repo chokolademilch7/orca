@@ -3,8 +3,54 @@ import type { AgentStatusEntry } from '../../../src/shared/agent-status-types'
 import {
   canShowMobileNativeChat,
   isMobileNativeChatTranscriptReadable,
+  nativeChatDropDetails,
   resolveMobileNativeChat
 } from './mobile-native-chat-eligibility'
+
+describe('nativeChatDropDetails', () => {
+  it('names every gate a chat→terminal flip can be attributed to, without raw identifiers', () => {
+    expect(
+      nativeChatDropDetails({
+        tab: {
+          type: 'terminal',
+          launchAgent: null,
+          agentStatus: status({
+            state: 'done',
+            agentType: 'claude',
+            providerSession: { id: 'session-1' }
+          })
+        },
+        tabId: 'tab-secret-prefix-abcdef12',
+        tabWantsChat: true,
+        transcriptReadable: true,
+        viewFallback: { defaultView: 'chat', overridesLoaded: false }
+      })
+    ).toEqual({
+      tab: 'abcdef12',
+      tabType: 'terminal',
+      tabWantsChat: true,
+      defaultView: 'chat',
+      overridesLoaded: false,
+      agentType: 'claude',
+      agentState: 'done',
+      launchAgent: null,
+      providerSession: true,
+      transcriptReadable: true
+    })
+  })
+
+  it('reports a vanished tab as nulls rather than throwing', () => {
+    expect(
+      nativeChatDropDetails({
+        tab: null,
+        tabId: null,
+        tabWantsChat: false,
+        transcriptReadable: false,
+        viewFallback: { defaultView: 'terminal', overridesLoaded: true }
+      })
+    ).toMatchObject({ tab: null, tabType: null, agentType: null, launchAgent: null })
+  })
+})
 
 function status(overrides: Partial<AgentStatusEntry> = {}): AgentStatusEntry {
   return {

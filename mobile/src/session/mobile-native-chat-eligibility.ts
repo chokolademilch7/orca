@@ -5,6 +5,11 @@ import {
   isNativeChatSupportedAgent,
   nativeChatRequiresLocalTranscript
 } from '../../../src/shared/native-chat-agent-support'
+import type { MobileSessionView } from '../storage/session-view-preferences'
+import {
+  shortenMobileTerminalDiagnosticId,
+  type MobileTerminalDiagnosticDetails
+} from './mobile-terminal-diagnostics'
 
 // Why: native chat renders an agent's own JSONL transcript, and the host
 // resolver knows these transcript layouts. Agents whose hook reports no
@@ -83,6 +88,30 @@ export function canShowMobileNativeChat(
   nativeChatTranscriptIsLocalReadable = false
 ): boolean {
   return resolveMobileNativeChat(tab, nativeChatTranscriptIsLocalReadable) !== null
+}
+
+/** Everything `showNativeChat` was derived from, so a chat→terminal flip in the field can be
+ *  attributed to one gate (view preference, tab identity, agent identity, transcript readability). */
+export function nativeChatDropDetails(args: {
+  tab: MobileNativeChatTab | null
+  tabId: string | null
+  tabWantsChat: boolean
+  transcriptReadable: boolean
+  viewFallback: { readonly defaultView: MobileSessionView; readonly overridesLoaded: boolean }
+}): MobileTerminalDiagnosticDetails {
+  const { tab, tabId, tabWantsChat, transcriptReadable, viewFallback } = args
+  return {
+    tab: shortenMobileTerminalDiagnosticId(tabId),
+    tabType: tab?.type ?? null,
+    tabWantsChat,
+    defaultView: viewFallback.defaultView,
+    overridesLoaded: viewFallback.overridesLoaded,
+    agentType: tab?.agentStatus?.agentType ?? null,
+    agentState: tab?.agentStatus?.state ?? null,
+    launchAgent: tab?.launchAgent ?? null,
+    providerSession: tab?.agentStatus?.providerSession?.id != null,
+    transcriptReadable
+  }
 }
 
 export function resolveMobileNativeChatFileSessionId(

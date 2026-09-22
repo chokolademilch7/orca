@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import {
   loadDefaultSessionView,
@@ -42,6 +42,8 @@ export type MobileSessionViewModeController = {
   /** Whether a tab's effective view is chat (per-tab override, else the default). */
   isTabChatView: (tabId: string) => boolean
   toggleTabChatView: (tabId: string) => void
+  /** Diagnostics only: what `isTabChatView` falls back to for a tab without an override. */
+  viewFallback: { readonly defaultView: MobileSessionView; readonly overridesLoaded: boolean }
 }
 
 /** Resolves each tab's terminal/chat view: a per-device default (reloaded on focus
@@ -204,5 +206,12 @@ export function useMobileSessionViewMode(args: {
     [ensureViewOverridesRuntime, hostId, worktreeId]
   )
 
-  return { isTabChatView, toggleTabChatView }
+  const overridesLoaded =
+    isOverrideScope(viewOverridesState, hostId, worktreeId) && viewOverridesState.loaded
+  const viewFallback = useMemo(
+    () => ({ defaultView, overridesLoaded }),
+    [defaultView, overridesLoaded]
+  )
+
+  return { isTabChatView, toggleTabChatView, viewFallback }
 }

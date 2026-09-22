@@ -39,11 +39,13 @@ export function getMobileTerminalDiagnosticErrorName(error: unknown): string {
 
 export function logMobileTerminalDiagnostic(
   event: string,
-  details: MobileTerminalDiagnosticDetails = {}
+  details: MobileTerminalDiagnosticDetails = {},
+  options: { readonly always?: boolean } = {}
 ): void {
   // Why: lifecycle diagnostics are intentionally available for HMR repros,
   // but high-frequency WebView events must not add production log overhead.
-  if (typeof __DEV__ !== 'undefined' && !__DEV__) {
+  // `always` is for rare state flips that must be catchable on a release build.
+  if (!options.always && typeof __DEV__ !== 'undefined' && !__DEV__) {
     return
   }
   // Keep this structured and content-free so users can safely share a filtered log.
