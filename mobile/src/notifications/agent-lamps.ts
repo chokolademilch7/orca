@@ -10,8 +10,13 @@ export const isAgentLamp = (value: string): value is AgentLamp => AGENT_LAMPS.in
 
 /** One lamp per agent, most recently updated first, capped at AGENT_LAMP_MAX.
  *  Idle and interrupted rows carry no live signal, so they take no lamp. */
+export type AgentLampRow = Pick<
+  RuntimeWorktreeAgentRow,
+  'state' | 'workingMode' | 'interrupted' | 'updatedAt'
+>
+
 export function agentLamps(
-  worktrees: readonly { agents?: readonly RuntimeWorktreeAgentRow[] }[],
+  worktrees: readonly { agents?: readonly AgentLampRow[] }[],
   now: number
 ): AgentLamp[] {
   return worktrees

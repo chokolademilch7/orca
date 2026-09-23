@@ -9,6 +9,8 @@ export type OrcaPushPayload = {
   readonly notificationEpoch?: string
   readonly paneKey?: string
   readonly worktreeId?: string
+  /** The gateway forwards the host's mapped state; absent on dismiss and terminal-bell. */
+  readonly agentState?: 'needs-input' | 'finished'
 }
 
 function readString(value: unknown): string | undefined {
@@ -38,6 +40,9 @@ export function readOrcaPushPayload(data: unknown): OrcaPushPayload | null {
     notificationSeq: readSeq(record.notificationSeq),
     notificationEpoch: readString(record.notificationEpoch),
     paneKey: readString(record.paneKey),
-    worktreeId: readString(record.worktreeId)
+    worktreeId: readString(record.worktreeId),
+    ...(record.agentState === 'needs-input' || record.agentState === 'finished'
+      ? { agentState: record.agentState }
+      : {})
   }
 }

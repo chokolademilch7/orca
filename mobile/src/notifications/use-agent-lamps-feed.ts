@@ -3,6 +3,7 @@ import { useNow } from '../hooks/use-now'
 import { useHostClient } from '../transport/host-client-hooks'
 import { startHostWorktreeRefresh } from '../worktree/host-worktree-refresh'
 import { WorktreeCatalogSnapshotClient } from '../worktree/worktree-catalog-snapshot-client'
+import { saveAgentLampsSnapshot } from './agent-lamps-snapshot'
 import { publishAgentLampsWorktrees, useAgentLampsWorktrees } from './agent-lamps-source'
 import { useAgentLampsLiveUpdate } from './use-agent-lamps-live-update'
 
@@ -35,4 +36,11 @@ export function useAgentLampsFeed(hostId: string | undefined, poll: boolean): vo
   }, [catalog, client, connState, hostId, poll])
 
   useAgentLampsLiveUpdate(worktrees, now)
+
+  // Why: a background push can only update a pane the foreground has seen; see agent-lamps-snapshot.
+  useEffect(() => {
+    if (hostId && worktrees.length > 0) {
+      void saveAgentLampsSnapshot(hostId, worktrees)
+    }
+  }, [hostId, worktrees])
 }

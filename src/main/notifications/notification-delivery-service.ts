@@ -92,6 +92,7 @@ export function createNotificationDeliveryService(
             title: notificationOptions.title,
             body: notificationOptions.body,
             worktreeId: request.worktreeId,
+            ...(request.paneKey ? { paneKey: request.paneKey } : {}),
             ...(request.notificationId ? { notificationId: request.notificationId } : {}),
             // Why: background push needs the agent's real state to pick "needs input"
             // vs "finished" — and to stay silent while the agent is still working.

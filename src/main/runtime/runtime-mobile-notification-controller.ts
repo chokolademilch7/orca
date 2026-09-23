@@ -23,6 +23,8 @@ export type MobileNotificationDispatchEvent = {
   title: string
   body: string
   worktreeId?: string
+  /** Which pane the agent state belongs to, so a background push can update one lamp. Additive. */
+  paneKey?: string
   notificationId?: string
   notificationSeq?: number
   notificationEpoch?: string

@@ -1,13 +1,32 @@
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
-import type { RuntimeWorktreeAgentRow } from '../../../src/shared/runtime-types'
 import { OrcaLiveUpdate } from '../../modules/orca-live-update/src'
-import { agentLampChipText, agentLampSummary, agentLamps, isAgentLamp } from './agent-lamps'
+import {
+  agentLampChipText,
+  agentLampSummary,
+  agentLamps,
+  isAgentLamp,
+  type AgentLamp,
+  type AgentLampRow
+} from './agent-lamps'
+
+/** Posts (or clears, when empty) the lamps notification. Android only; a no-op elsewhere. */
+export function postAgentLamps(lamps: readonly AgentLamp[]): void {
+  const native = Platform.OS === 'android' ? OrcaLiveUpdate : null
+  if (!native) {
+    return
+  }
+  if (lamps.length === 0) {
+    native.clear()
+    return
+  }
+  native.update([...lamps], 'Orca agents', agentLampSummary(lamps), agentLampChipText(lamps))
+}
 
 /** Mirrors the visible agent rows into the Android Live Update lamps notification. Cleared when
  *  the caller unmounts so a closed host screen never leaves stale lamps in the status bar. */
 export function useAgentLampsLiveUpdate(
-  worktrees: readonly { agents?: readonly RuntimeWorktreeAgentRow[] }[],
+  worktrees: readonly { agents?: readonly AgentLampRow[] }[],
   now: number
 ): void {
   const lamps = agentLamps(worktrees, now)
@@ -20,12 +39,7 @@ export function useAgentLampsLiveUpdate(
     if (!native) {
       return
     }
-    if (key === '') {
-      native.clear()
-      return
-    }
-    const current = key.split(',').filter(isAgentLamp)
-    native.update(current, 'Orca agents', agentLampSummary(current), agentLampChipText(current))
+    postAgentLamps(key === '' ? [] : key.split(',').filter(isAgentLamp))
   }, [native, key])
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { applyPushToAgentLamps } from './agent-lamps-snapshot'
 import { wasPushDismissed } from './push-dismissal-watermarks'
 import * as TaskManager from 'expo-task-manager'
 import * as Notifications from 'expo-notifications'
@@ -21,6 +22,9 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
       }
     }
     const payload = readOrcaPushPayload(raw)
+    if (payload?.agentState) {
+      await applyPushToAgentLamps(payload)
+    }
     if (
       payload?.notificationId &&
       (payload.kind === 'dismiss' || (await wasPushDismissed(payload)))

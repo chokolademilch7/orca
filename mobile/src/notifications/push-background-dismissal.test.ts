@@ -11,6 +11,8 @@ vi.mock('expo-notifications', () => ({
   getPresentedNotificationsAsync: vi.fn(async () => []),
   dismissNotificationAsync: vi.fn()
 }))
+// Why: the lamps overlay pulls in react-native (Platform), which vitest cannot parse.
+vi.mock('./agent-lamps-snapshot', () => ({ applyPushToAgentLamps: vi.fn() }))
 vi.mock('./push-tray-dismissal', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./push-tray-dismissal')>()
   return {
