@@ -91,5 +91,11 @@ export async function applyPushToAgentLamps(payload: OrcaPushPayload): Promise<v
   } catch {
     // Same as above: the post below still reflects this push.
   }
-  postAgentLamps(agentLamps([{ agents: rows }], now))
+  // Why no clear: a push reports ONE pane's state, never the fact that every agent has finished.
+  // An unreadable, never-written, or fully decayed snapshot yields no lamps, and posting that
+  // would cancel a notification the foreground had posted correctly (STA: the 11:22 blank window).
+  const lamps = agentLamps([{ agents: rows }], now)
+  if (lamps.length > 0) {
+    postAgentLamps(lamps)
+  }
 }
