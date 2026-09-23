@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { RuntimeWorktreeAgentRow } from '../../../src/shared/runtime-types'
 import { AGENT_STATUS_STALE_AFTER_MS } from '../worktree/agent-row-display'
-import { AGENT_LAMP_MAX, agentLampChipText, agentLampSummary, agentLamps } from './agent-lamps'
+import {
+  AGENT_LAMP_MAX,
+  agentLampChipText,
+  agentLampCounts,
+  agentLampSummary,
+  agentLamps
+} from './agent-lamps'
 
 function row(overrides: Partial<RuntimeWorktreeAgentRow> = {}): RuntimeWorktreeAgentRow {
   return {
@@ -63,5 +69,14 @@ describe('agentLamps', () => {
   it('renders chip counts, attention first, zero counts dropped', () => {
     expect(agentLampChipText(['working', 'done', 'attention', 'working'])).toBe('1! 2● 1✓')
     expect(agentLampChipText(['done', 'done'])).toBe('2✓')
+  })
+
+  it('rolls counts up in reading order for the chip and the pill alike', () => {
+    expect(agentLampCounts(['working', 'done', 'attention', 'working'])).toEqual([
+      { lamp: 'attention', count: 1 },
+      { lamp: 'working', count: 2 },
+      { lamp: 'done', count: 1 }
+    ])
+    expect(agentLampCounts([])).toEqual([])
   })
 })

@@ -10,12 +10,26 @@ import {
   type AgentLampRow
 } from './agent-lamps'
 
+// Why module state: two writers reach this notification — the foreground feed and the background
+// push task — and neither can see the other's React state. Holding what was last posted here is
+// what lets the foreground notice an out-of-band write and re-assert over it.
+let lastPostedKey: string | null = null
+
+function nativeLiveUpdate() {
+  return Platform.OS === 'android' ? OrcaLiveUpdate : null
+}
+
 /** Posts (or clears, when empty) the lamps notification. Android only; a no-op elsewhere. */
 export function postAgentLamps(lamps: readonly AgentLamp[]): void {
-  const native = Platform.OS === 'android' ? OrcaLiveUpdate : null
+  const native = nativeLiveUpdate()
   if (!native) {
     return
   }
+  const key = lamps.join(',')
+  if (key === lastPostedKey) {
+    return
+  }
+  lastPostedKey = key
   if (lamps.length === 0) {
     native.clear()
     return
@@ -23,29 +37,33 @@ export function postAgentLamps(lamps: readonly AgentLamp[]): void {
   native.update([...lamps], 'Orca agents', agentLampSummary(lamps), agentLampChipText(lamps))
 }
 
+/** Takes the notification down and forgets what was posted, so a remount posts again. */
+export function clearAgentLamps(): void {
+  lastPostedKey = null
+  nativeLiveUpdate()?.clear()
+}
+
+export function resetAgentLampsPostStateForTests(): void {
+  lastPostedKey = null
+}
+
 /** Mirrors the visible agent rows into the Android Live Update lamps notification. Cleared when
  *  the caller unmounts so a closed host screen never leaves stale lamps in the status bar. */
 export function useAgentLampsLiveUpdate(
   worktrees: readonly { agents?: readonly AgentLampRow[] }[],
   now: number
-): void {
+): AgentLamp[] {
   const lamps = agentLamps(worktrees, now)
-  // Why a string key: `now` ticks every 30s and the list identity changes on every fetch, but
-  // the notification only needs re-posting when a lamp actually changes state.
   const key = lamps.join(',')
-  const native = Platform.OS === 'android' ? OrcaLiveUpdate : null
 
+  // Why `now` is a dependency: the background push task writes this same notification, and the
+  // foreground cannot see that it did. Re-asserting on every tick makes the next tick repair an
+  // out-of-band write; postAgentLamps drops the call when nothing actually changed.
   useEffect(() => {
-    if (!native) {
-      return
-    }
     postAgentLamps(key === '' ? [] : key.split(',').filter(isAgentLamp))
-  }, [native, key])
+  }, [key, now])
 
-  useEffect(() => {
-    if (!native) {
-      return
-    }
-    return () => native.clear()
-  }, [native])
+  useEffect(() => clearAgentLamps, [])
+
+  return lamps
 }

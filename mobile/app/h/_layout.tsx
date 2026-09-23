@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, StyleSheet, PanResponder } from 'react-native'
-import { Stack, useGlobalSearchParams, usePathname } from 'expo-router'
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../src/theme/mobile-theme'
 import { useResponsiveLayout } from '../../src/layout/responsive-layout'
 import {
@@ -12,7 +13,9 @@ import {
 } from '../../src/storage/preferences'
 import { HostProtocolGate } from '../../src/components/HostProtocolGate'
 import { HostScreen } from '../../src/host-screen/HostScreen'
+import { AgentLampsPill } from '../../src/components/AgentLampsPill'
 import { useAgentLampsFeed } from '../../src/notifications/use-agent-lamps-feed'
+import { spacing } from '../../src/theme/mobile-theme'
 
 // Keep at least this much room for the detail pane when resizing the sidebar.
 const MIN_DETAIL_WIDTH = 320
@@ -105,8 +108,11 @@ export default function HostGroupLayout() {
   const detailHasContent = !!hostId && pathname !== `/h/${hostId}`
   const canCollapseSidebar = showSidebar && detailHasContent
   // Why here: this layout is never a frozen stack screen. The host list feeds the lamps while it
-  // is focused or embedded; poll only when a detail route has it blurred or unmounted.
-  useAgentLampsFeed(hostId, detailHasContent && !(showSidebar && sidebarOpen))
+  // is focused or embedded; poll only when a detail route has it blurred or unmounted — which is
+  // also exactly when no worktree list is on screen, so the pill stands in for it.
+  const worktreeListHidden = detailHasContent && !(showSidebar && sidebarOpen)
+  const lamps = useAgentLampsFeed(hostId, worktreeListHidden)
+  const insets = useSafeAreaInsets()
 
   // Why: there is no reveal button — navigating Back to the base host route brings
   // the sidebar back (and that route's detail pane is only a placeholder, so a
@@ -166,6 +172,20 @@ export default function HostGroupLayout() {
         <View style={styles.detail}>
           <HostStack animation={showSidebar ? 'none' : 'default'} />
         </View>
+        {/* Centred under the notch, where the system chip sits — the header's title is left-aligned
+            and its actions right-aligned, so the middle is the one band that is free on every
+            route. `box-none` keeps the overlay from eating taps meant for the screen below. */}
+        {worktreeListHidden && hostId ? (
+          <View
+            style={[styles.lampsOverlay, { top: insets.top + spacing.xs }]}
+            pointerEvents="box-none"
+          >
+            <AgentLampsPill
+              lamps={lamps}
+              onPress={() => router.push(`/h/${encodeURIComponent(hostId)}`)}
+            />
+          </View>
+        ) : null}
       </View>
     </HostProtocolGate>
   )
@@ -195,5 +215,13 @@ const styles = StyleSheet.create({
   detail: {
     flex: 1,
     minWidth: 0
+  },
+  lampsOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 30
   }
 })

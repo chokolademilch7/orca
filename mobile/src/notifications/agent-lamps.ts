@@ -43,13 +43,21 @@ export function agentLampSummary(lamps: readonly AgentLamp[]): string {
   return parts.filter((p) => p !== null).join(' · ')
 }
 
-/** Status-bar chip text. The chip is monochrome, so counts per glyph replace one glyph per lamp;
- *  attention leads because it is the one state that needs the user. Zero counts are dropped. */
+/** Reading order for a per-state rollup: attention leads because it is the one state that needs
+ *  the user, done trails because it needs nothing. */
+const AGENT_LAMP_ORDER = ['attention', 'working', 'done'] as const
+
+/** Non-zero per-state counts in reading order — the rollup the chip and the in-app pill share. */
+export function agentLampCounts(lamps: readonly AgentLamp[]): { lamp: AgentLamp; count: number }[] {
+  return AGENT_LAMP_ORDER.map((lamp) => ({ lamp, count: countLamp(lamps, lamp) })).filter(
+    ({ count }) => count > 0
+  )
+}
+
+/** Status-bar chip text. The chip is monochrome, so counts per glyph replace one glyph per lamp. */
 export function agentLampChipText(lamps: readonly AgentLamp[]): string {
   const glyph: Record<AgentLamp, string> = { attention: '!', working: '●', done: '✓' }
-  return (['attention', 'working', 'done'] as const)
-    .map((lamp) => ({ n: countLamp(lamps, lamp), glyph: glyph[lamp] }))
-    .filter(({ n }) => n > 0)
-    .map(({ n, glyph }) => `${n}${glyph}`)
+  return agentLampCounts(lamps)
+    .map(({ lamp, count }) => `${count}${glyph[lamp]}`)
     .join(' ')
 }
