@@ -1,6 +1,8 @@
 import { MobileSelectableText as Text } from '../components/MobileSelectableText'
-import { memo } from 'react'
-import { Image, Text as NativeText, View } from 'react-native'
+import { memo, useState, type ComponentProps, type ReactNode } from 'react'
+import { Image, Text as NativeText, Pressable, View } from 'react-native'
+import { INLINE_TEXT_SELECTION } from '../components/inline-text-selection'
+import { MobileNativeChatMessageActionsSheet } from './MobileNativeChatMessageActionsSheet'
 import { splitNativeChatBlocks } from '../../../src/shared/native-chat-tool-fold'
 import { selectActiveToolCall } from '../../../src/shared/native-chat-tool-activity'
 import { isImageRefBlock, isTextBlock } from '../../../src/shared/native-chat-types'
@@ -28,7 +30,10 @@ function Prose({
     // markdown renderer's light-on-dark palette.
     if (invert) {
       return (
-        <Text selectable style={[styles.userText, { fontSize: TEXT_SIZE * fontScale }]}>
+        <Text
+          selectable={INLINE_TEXT_SELECTION}
+          style={[styles.userText, { fontSize: TEXT_SIZE * fontScale }]}
+        >
           {block.text}
         </Text>
       )
@@ -63,6 +68,26 @@ function Prose({
     )
   }
   return null
+}
+
+// A plain View unless a long press is wired: a Pressable around every bubble would claim the
+// row's taps and show up as one more pressable in the tool-run tests.
+function Content({
+  onLongPress,
+  style,
+  children
+}: {
+  onLongPress?: () => void
+  style: ComponentProps<typeof View>['style']
+  children: ReactNode
+}): React.JSX.Element {
+  return onLongPress ? (
+    <Pressable onLongPress={onLongPress} style={style}>
+      {children}
+    </Pressable>
+  ) : (
+    <View style={style}>{children}</View>
+  )
 }
 
 function MobileNativeChatMessageImpl({
@@ -115,11 +140,15 @@ function MobileNativeChatMessageImpl({
     !turnExpanded &&
     !toolsExpanded
   const showToolRun = tools.length > 0 && !settledToolsHidden
+  // Where inline selection is off (Android), a long press is how the text gets copied. The
+  // sheet is mounted only while open, so an idle row costs nothing for it.
+  const [actionsOpen, setActionsOpen] = useState(false)
 
   return (
     <>
       <View style={[styles.row, isUser && styles.rowUser]}>
-        <View
+        <Content
+          onLongPress={INLINE_TEXT_SELECTION ? undefined : () => setActionsOpen(true)}
           style={[styles.content, isUser && styles.userBubble, isReasoning && styles.reasoning]}
         >
           {prose.map((block, index) => (
@@ -143,8 +172,14 @@ function MobileNativeChatMessageImpl({
               onOpenFile={onOpenFile}
             />
           ) : null}
-        </View>
+        </Content>
       </View>
+      {actionsOpen ? (
+        <MobileNativeChatMessageActionsSheet
+          message={message}
+          onClose={() => setActionsOpen(false)}
+        />
+      ) : null}
       {turnStatus ? (
         <MobileNativeChatTurnStatus
           startedAt={turnStatus.startedAt}

@@ -1,5 +1,6 @@
 import { openExternalLink } from '../platform/external-link'
 import { createMarkdownInlineMatcher, type MarkdownInlineMatch } from './markdown-inline-matcher'
+import { INLINE_TEXT_SELECTION } from './inline-text-selection'
 import { MobileSelectableText } from './MobileSelectableText'
 import {
   Fragment,
@@ -51,7 +52,13 @@ const MarkdownTextContext = createContext<ComponentType<TextProps>>(NativeText)
 
 function MarkdownText(props: TextProps): React.JSX.Element {
   const TextComponent = useContext(MarkdownTextContext)
-  return createElement(TextComponent, props)
+  // Every selectable span funnels through here, so one gate covers the whole document. Only an
+  // explicit `selectable` is rewritten: react-native-web maps `selectable={false}` to
+  // `userSelect: none`, so writing `false` onto an untouched inline span would block selection.
+  return createElement(
+    TextComponent,
+    props.selectable === true && !INLINE_TEXT_SELECTION ? { ...props, selectable: false } : props
+  )
 }
 
 // Web/mail hrefs open the system handler; file-target hrefs (file: URIs and
