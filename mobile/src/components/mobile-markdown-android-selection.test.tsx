@@ -62,15 +62,23 @@ describe('MobileMarkdown on Android', () => {
     }
   })
 
-  it('routes a long press on a tappable span to the row, so a link cannot swallow it', () => {
+  it('routes a long press on a tappable span or image to the row, so neither swallows it', () => {
     const onLongPress = vi.fn()
-    const all = render({ content: CONTENT, rangeSelectable: true, onLongPress })
+    const content = `${CONTENT}\n\n![diagram](https://example.com/diagram.png)`
+    const all = render({ content, rangeSelectable: true, onLongPress })
     const links = tappable(all)
     expect(links.length).toBeGreaterThan(0)
     for (const node of links) {
       expect(node.props.onLongPress).toBe(onLongPress)
     }
     expect(all.filter((node) => !node.props.onPress && node.props.onLongPress)).toHaveLength(0)
+    const images = renderer!.root.findAll(
+      (node) => String(node.type) === 'Pressable' && typeof node.props.onPress === 'function'
+    )
+    expect(images.length).toBeGreaterThan(0)
+    for (const node of images) {
+      expect(node.props.onLongPress).toBe(onLongPress)
+    }
   })
 
   it('keeps other surfaces (task comments, previews) selectable as before', () => {

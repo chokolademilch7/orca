@@ -239,6 +239,10 @@ function MobileMarkdownContent({
   textScale = 1,
   onOpenFile
 }: Props) {
+  // Image blocks are Pressables of their own, so they take the row's long press the same way
+  // tappable spans do (see MarkdownText).
+  const setup = useContext(MarkdownTextContext)
+  const rowLongPress = setup.androidTranscript ? setup.onLongPress : undefined
   const text = content?.trim() ?? ''
   const previewText = useMemo(() => normalizeMobileMarkdownPreviewHtml(text), [text])
   const blocks = useMemo(() => parseMobileMarkdown(previewText), [previewText])
@@ -312,6 +316,7 @@ function MobileMarkdownContent({
               key={index}
               style={styles.imageFrame}
               onPress={() => openMarkdownHref(block.url, onOpenFile)}
+              onLongPress={rowLongPress}
             >
               <NativeText style={styles.link}>{block.alt || 'Open image'}</NativeText>
               <NativeText style={styles.imageCaption} numberOfLines={1}>
