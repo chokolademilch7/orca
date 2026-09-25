@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MobileMarkdown } from './MobileMarkdown'
 
 // Why Android here: the sibling selectable test runs as iOS and proves prose IS selectable there;
-// this one proves the same document carries no selectable span on Android, where a selectable
-// TextView selects words while the transcript scrolls.
+// this one proves the transcript carries no selectable span on Android, where a selectable
+// TextView selects words while the transcript scrolls — and that other surfaces are untouched.
 vi.mock('react-native', () => ({
   Linking: { openURL: () => Promise.resolve() },
   Platform: { OS: 'android' },
@@ -39,23 +39,42 @@ describe('MobileMarkdown on Android', () => {
     renderer = null
   })
 
-  function texts(): ReactTestInstance[] {
-    return renderer!.root.findAll((node) => node.type === ('Text' as never))
+  function render(props: Parameters<typeof MobileMarkdown>[0]): ReactTestInstance[] {
+    act(() => {
+      renderer = create(createElement(MobileMarkdown, props))
+    })
+    return renderer!.root.findAll((node) => String(node.type) === 'Text')
   }
 
-  it('renders no selectable span, and leaves untouched spans without a selectable prop', () => {
-    act(() => {
-      renderer = create(createElement(MobileMarkdown, { content: CONTENT, rangeSelectable: true }))
-    })
-    const all = texts()
+  const tappable = (nodes: ReactTestInstance[]) =>
+    nodes.filter((node) => typeof node.props.onPress === 'function')
+
+  it('renders the transcript with no selectable span, leaving untouched spans alone', () => {
+    const all = render({ content: CONTENT, rangeSelectable: true })
     expect(all.length).toBeGreaterThan(5)
     expect(all.filter((node) => node.props.selectable === true)).toHaveLength(0)
     // Inline spans (bold, code, links) never asked for selection; writing `false` onto them
     // would map to `userSelect: none` on the web, so the gate must leave them alone.
-    const inline = all.filter((node) => typeof node.props.onPress === 'function')
-    expect(inline.length).toBeGreaterThan(0)
-    for (const node of inline) {
+    const links = tappable(all)
+    expect(links.length).toBeGreaterThan(0)
+    for (const node of links) {
       expect(node.props.selectable).toBeUndefined()
     }
+  })
+
+  it('routes a long press on a tappable span to the row, so a link cannot swallow it', () => {
+    const onLongPress = vi.fn()
+    const all = render({ content: CONTENT, rangeSelectable: true, onLongPress })
+    const links = tappable(all)
+    expect(links.length).toBeGreaterThan(0)
+    for (const node of links) {
+      expect(node.props.onLongPress).toBe(onLongPress)
+    }
+    expect(all.filter((node) => !node.props.onPress && node.props.onLongPress)).toHaveLength(0)
+  })
+
+  it('keeps other surfaces (task comments, previews) selectable as before', () => {
+    const all = render({ content: CONTENT })
+    expect(all.filter((node) => node.props.selectable === true).length).toBeGreaterThan(0)
   })
 })

@@ -1,5 +1,5 @@
 import { MobileSelectableText as Text } from '../components/MobileSelectableText'
-import { memo, useState, type ComponentProps, type ReactNode } from 'react'
+import { memo, useCallback, useState, type ComponentProps, type ReactNode } from 'react'
 import { Image, Text as NativeText, Pressable, View } from 'react-native'
 import { INLINE_TEXT_SELECTION } from '../components/inline-text-selection'
 import { MobileNativeChatMessageActionsSheet } from './MobileNativeChatMessageActionsSheet'
@@ -22,12 +22,15 @@ function Prose({
   block,
   invert,
   fontScale,
-  onOpenFile
+  onOpenFile,
+  onLongPress
 }: {
   block: NativeChatBlock
   invert?: boolean
   fontScale: number
   onOpenFile?: (relativePath: string) => void
+  /** Android only: routes a long press on a link span to the row's actions sheet. */
+  onLongPress?: () => void
 }): React.JSX.Element | null {
   if (isTextBlock(block)) {
     if (isAgentSessionHostStatusPresentation(block.presentation)) {
@@ -55,6 +58,7 @@ function Prose({
         rangeSelectable
         textScale={1.25 * fontScale}
         onOpenFile={onOpenFile}
+        onLongPress={onLongPress}
       />
     )
   }
@@ -157,6 +161,9 @@ function MobileNativeChatMessageImpl({
   // Where inline selection is off (Android), a long press is how the text gets copied. The
   // sheet is mounted only while open, so an idle row costs nothing for it.
   const [actionsOpen, setActionsOpen] = useState(false)
+  // Why useCallback: the markdown memoises its text setup on this identity per render.
+  const openActions = useCallback(() => setActionsOpen(true), [])
+  const onLongPress = INLINE_TEXT_SELECTION ? undefined : openActions
 
   const statusRow = turnStatus ? (
     <MobileNativeChatTurnStatus
@@ -173,7 +180,7 @@ function MobileNativeChatMessageImpl({
       {turnStatusAbove ? statusRow : null}
       <View style={[styles.row, isUser && styles.rowUser]}>
         <Content
-          onLongPress={INLINE_TEXT_SELECTION ? undefined : () => setActionsOpen(true)}
+          onLongPress={onLongPress}
           style={[styles.content, isUser && styles.userBubble, isReasoning && styles.reasoning]}
         >
           {prose.map((block, index) => (
@@ -183,6 +190,7 @@ function MobileNativeChatMessageImpl({
               invert={isUser}
               fontScale={fontScale}
               onOpenFile={onOpenFile}
+              onLongPress={onLongPress}
             />
           ))}
           {showToolRun ? (
