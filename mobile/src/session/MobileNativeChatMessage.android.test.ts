@@ -87,6 +87,25 @@ describe('MobileNativeChatMessage on Android', () => {
     expect(byType('MessageActionsSheet')).toHaveLength(0)
   })
 
+  it('disables inline selection for host notices too', () => {
+    act(() => {
+      renderer = create(
+        createElement(MobileNativeChatMessage, {
+          message: {
+            ...message,
+            role: 'system',
+            blocks: [{ type: 'text', text: 'fallback', presentation: 'history-item-too-large' }]
+          }
+        })
+      )
+    })
+    const texts = byType('Text').filter((node) => node.props.selectable !== undefined)
+    expect(texts).toHaveLength(1)
+    expect(texts[0]!.props.selectable).toBe(false)
+    act(() => byType('Pressable')[0]!.props.onLongPress())
+    expect(byType('MessageActionsSheet')).toHaveLength(1)
+  })
+
   it('renders the user bubble without inline selection', () => {
     act(() => {
       renderer = create(

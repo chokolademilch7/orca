@@ -34,8 +34,7 @@ type Props = {
   fallback?: string
   /** Enables iOS range selection for native-chat transcript prose. */
   rangeSelectable?: boolean
-  /** Android transcript: what a long press on a tappable span (link, file path) should open,
-   *  so the span does not swallow the press the surrounding row would otherwise take. */
+  /** Forward long presses from interactive Android transcript spans to the message. */
   onLongPress?: () => void
   /** Multiplier for prose font size (paragraphs, lists, quotes). Defaults to 1;
    *  the chat view passes >1 so agent prose reads larger than the compact base. */
@@ -53,8 +52,7 @@ const MAX_TABLE_COLUMNS = 8
 const MERMAID_BASE = 13
 type MarkdownTextSetup = {
   TextComponent: ComponentType<TextProps>
-  /** Android transcript only: no span is selectable, and spans that take taps also take the
-   *  row's long press, or a link under the finger would swallow it. */
+  /** Disable native selection only within the Android transcript. */
   androidTranscript: boolean
   onLongPress?: () => void
 }
@@ -68,9 +66,7 @@ function MarkdownText(props: TextProps): React.JSX.Element {
   if (!androidTranscript) {
     return createElement(TextComponent, props)
   }
-  // Every selectable span funnels through here, so one gate covers the whole document. Only an
-  // explicit `selectable` is rewritten: react-native-web maps `selectable={false}` to
-  // `userSelect: none`, so writing `false` onto an untouched inline span would block selection.
+  // Override selection without changing the nested spans' inherited behavior.
   return createElement(TextComponent, {
     ...props,
     ...(props.selectable === true ? { selectable: false } : {}),
@@ -239,8 +235,7 @@ function MobileMarkdownContent({
   textScale = 1,
   onOpenFile
 }: Props) {
-  // Image blocks are Pressables of their own, so they take the row's long press the same way
-  // tappable spans do (see MarkdownText).
+  // Interactive children own their touches and must forward the row action.
   const setup = useContext(MarkdownTextContext)
   const rowLongPress = setup.androidTranscript ? setup.onLongPress : undefined
   const text = content?.trim() ?? ''
@@ -410,8 +405,7 @@ function MobileMarkdownContent({
 
 function MobileMarkdownInner(props: Props): React.JSX.Element | null {
   const { rangeSelectable = false, onLongPress } = props
-  // Only the transcript (the one caller passing rangeSelectable) loses inline selection on
-  // Android; task comments and file previews keep theirs, as before.
+  // Other Markdown surfaces retain their existing selection behavior.
   const androidTranscript = rangeSelectable && !INLINE_TEXT_SELECTION
   const setup = useMemo<MarkdownTextSetup>(
     () => ({

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { AGENT_SESSION_HOST_STATUS_COPY } from '../../../src/shared/agent-session-host-status-rows'
 import type { NativeChatBlock } from '../../../src/shared/native-chat-types'
 import { nativeChatMessagePlainText } from './mobile-native-chat-message-plain-text'
 
@@ -13,6 +14,14 @@ describe('nativeChatMessagePlainText', () => {
     expect(nativeChatMessagePlainText({ blocks })).toBe(
       '  indented first line\n\n\nSecond, with `code`.'
     )
+  })
+
+  it('copies the displayed host notice instead of its fallback wire text', () => {
+    expect(
+      nativeChatMessagePlainText({
+        blocks: [{ type: 'text', text: 'fallback', presentation: 'history-item-too-large' }]
+      })
+    ).toBe(AGENT_SESSION_HOST_STATUS_COPY['history-item-too-large'])
   })
 
   it('is empty for a message with no prose', () => {

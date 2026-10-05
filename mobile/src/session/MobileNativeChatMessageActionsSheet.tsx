@@ -15,9 +15,6 @@ type Props = {
   onClose: () => void
 }
 
-/** Long-press actions for a transcript message where inline selection is off (Android): copy the
- *  whole message, or open a screen whose only job is selecting text, so a stray selection can
- *  never start while the transcript scrolls. */
 export function MobileNativeChatMessageActionsSheet({
   message,
   onClose
@@ -25,10 +22,10 @@ export function MobileNativeChatMessageActionsSheet({
   const clipboard = useClipboardWriter()
   const [sheetVisible, setSheetVisible] = useState(true)
   const [selecting, setSelecting] = useState(false)
-  // Why deferred: a second native Modal must not be presented while the drawer's own modal is
-  // still closing, so "Select text" only marks the intent and the drawer's after-close opens it.
+  // Wait for the drawer to unmount before presenting another native modal.
   const selectRequested = useRef(false)
-  const text = nativeChatMessagePlainText(message)
+  // Streaming updates must not reset an active native text selection.
+  const [text] = useState(() => nativeChatMessagePlainText(message))
   const closeSheet = () => setSheetVisible(false)
 
   return (
@@ -84,7 +81,13 @@ function SelectTextScreen({
       <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.header}>
           <Text style={styles.title}>Select text</Text>
-          <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close" style={styles.close}>
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+            style={styles.close}
+          >
             <X size={20} color={colors.textSecondary} />
           </Pressable>
         </View>
